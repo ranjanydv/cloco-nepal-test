@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const api = axios.create({
 	baseURL: `${baseUrl}/v1`,
-	withCredentials: true, // Send cookies with every request
+	withCredentials: true,
 });
 
 api.interceptors.response.use(
@@ -13,15 +13,18 @@ api.interceptors.response.use(
 
 		// Check if the error is due to an expired access token
 		if (error.response.status === 401 && !originalRequest._retry) {
-			originalRequest._retry = true;
+			originalRequest._retry = (originalRequest._retry || 0) + 1;
+			if (originalRequest._retry > 3) {
+				return Promise.reject(error);
+			}
 
 			try {
 				// Attempt to refresh the token
 				await api.post('/auth/refresh-token');
-				console.log('Token refreshed successfully'); // Debugging: Log success
-				return api(originalRequest); // Retry the original request
+				console.log('Token refreshed successfully');
+				return api(originalRequest);
 			} catch (refreshError) {
-				console.error('Failed to refresh token:', refreshError); // Debugging: Log failure
+				console.error('Failed to refresh token:', refreshError);
 				// Clear cookies and redirect to login page
 				document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 				document.cookie = 'refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';

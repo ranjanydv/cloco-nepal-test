@@ -18,11 +18,13 @@ export default function Login() {
         formState: { errors },
     } = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
+        mode: 'onChange',
     });
 
     const loginMutation = useMutation({
         mutationFn: (credentials: LoginFormData) => api.post('/auth/login', credentials),
         onSuccess: () => {
+            toast.success('Login successful');
             router.push('/dashboard');
         },
         onError: (error) => {
