@@ -10,18 +10,19 @@ const app = express();
 // CORS configuration
 app.use(
 	cors({
-		allowedHeaders: ['Content-Type', 'Authorization'],
-		methods: ['GET', 'POST', 'PUT', 'DELETE'],
-		origin: '*',
+		origin: process.env.FRONTEND_URL,
 		credentials: true,
+		methods: ['GET', 'POST', 'PUT', 'DELETE'],
+		allowedHeaders: ['Content-Type', 'Authorization'],
 	})
 );
 
 // Middleware
-app.use(cors());
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 app.use(cookieParser());
+app.options('*', cors());
+
 // Routes
 app.use('/api/v1', v1Routes);
 

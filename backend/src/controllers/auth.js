@@ -27,9 +27,10 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
 	const { email, password } = req.body;
+	console.log("🚀 ~ file: auth.js:30 ~ login ~ email, password:", email, password)
+
 
 	try {
-		// Find the user by email using raw SQL
 		const query = 'SELECT * FROM users WHERE email = $1';
 		const result = await pool.query(query, [email]);
 
@@ -45,7 +46,6 @@ const login = async (req, res) => {
 			return res.status(400).json({ message: 'Invalid password' });
 		}
 
-		// Generate JWT tokens
 		const accessToken = jwt.sign({ userId: user.id, role: user.role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
 		const refreshToken = jwt.sign({ userId: user.id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
 
@@ -86,10 +86,11 @@ const refreshToken = async (req, res) => {
 
 		const newAccessToken = jwt.sign({ userId: decoded.userId, role: result.rows[0].role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
 
-		res.cookie('accessToken', accessToken, {
+		res.cookie('accessToken', newAccessToken, {
 			httpOnly: true,
 			secure: false,
 			sameSite: 'lax',
+			maxAge: 15 * 60 * 1000, // 15 minutes
 		});
 
 		res.json({ message: 'Token refreshed' });
