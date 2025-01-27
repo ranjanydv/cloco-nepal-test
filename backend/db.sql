@@ -1,4 +1,6 @@
 CREATE TYPE user_role AS ENUM ('super_admin', 'artist_manager', 'artist');
+CREATE TYPE gender_enum AS ENUM ('m', 'f', 'o');
+CREATE TYPE genre_enum AS ENUM ('mb', 'country', 'classic', 'rock', 'jazz');
 
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
@@ -15,7 +17,7 @@ CREATE TABLE artists (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   dob DATE NOT NULL,
-  gender VARCHAR(1) NOT NULL CHECK (gender IN ('m', 'f', 'o')),
+  gender gender_enum NOT NULL,
   address VARCHAR(255) NOT NULL,
   first_release_year INT NOT NULL,
   no_of_albums_released INT NOT NULL,
@@ -28,7 +30,7 @@ CREATE TABLE music (
   artist_id INT REFERENCES artists(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   album_name VARCHAR(255) NOT NULL,
-  genre VARCHAR(50) NOT NULL CHECK (genre IN ('mb', 'country', 'classic', 'rock', 'jazz')),
+  genre genre_enum NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -15,7 +15,7 @@ const register = async (req, res) => {
 			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id;
 			`;
-		const values = [firstName, lastName, email, hashedPassword, role];
+		const values = [firstName, lastName, email.toLowerCase(), hashedPassword, role];
 
 		const result = await pool.query(query, values);
 		res.status(201).json({ message: 'User registered successfully', userId: result.rows[0].id });
@@ -27,12 +27,10 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
 	const { email, password } = req.body;
-	console.log("🚀 ~ file: auth.js:30 ~ login ~ email, password:", email, password)
-
 
 	try {
 		const query = 'SELECT * FROM users WHERE email = $1';
-		const result = await pool.query(query, [email]);
+		const result = await pool.query(query, [email.toLowerCase()]);
 
 		if (result.rows.length === 0) {
 			return res.status(400).json({ message: 'User not found' });
@@ -46,7 +44,7 @@ const login = async (req, res) => {
 			return res.status(400).json({ message: 'Invalid password' });
 		}
 
-		const accessToken = jwt.sign({ userId: user.id, role: user.role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+		const accessToken = jwt.sign({ userId: user.id, role: user.role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
 		const refreshToken = jwt.sign({ userId: user.id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
 
 		// Set cookies
@@ -56,11 +54,11 @@ const login = async (req, res) => {
 			sameSite: 'lax',
 		});
 
-		res.cookie('refreshToken', refreshToken, {
-			httpOnly: true,
-			secure: false,
-			sameSite: 'lax',
-		});
+		// res.cookie('refreshToken', refreshToken, {
+		// 	httpOnly: true,
+		// 	secure: false,
+		// 	sameSite: 'lax',
+		// });
 
 		res.json({ message: 'Login successful' });
 	} catch (error) {

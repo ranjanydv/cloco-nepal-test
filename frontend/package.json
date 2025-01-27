@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "start:dev": "rm -rf .next && next build && next start",
     "lint": "next lint",
     "lint:fix": "eslint . --fix"
   },

@@ -10,7 +10,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import api from '@/lib/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader, PlusIcon } from 'lucide-react';
-import { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import AddUserForm from './component/AddUserForm';
 
 function UsersPage() {
@@ -25,20 +25,26 @@ function UsersPage() {
 
     const { data, isLoading, error } = useQuery<IApiResponse<IUser>>({
         queryKey: ['users', debouncedSearch, page],
-        queryFn: () =>
-            api
-                .get('/user', {
-                    params: {
-                        ...(debouncedSearch && { search: debouncedSearch }),
-                        page,
-                        size: 10,
-                    },
-                })
-                .then((response) => {
-                    setUsers(response.data.data);
-                    return response.data;
-                }),
+        queryFn: async () => {
+            const response = await api.get('/user', {
+                params: {
+                    ...(debouncedSearch && { search: debouncedSearch }),
+                    page,
+                },
+            });
+            setUsers(response.data.data);
+            return response.data;
+        },
     });
+
+    const handlePageChange = useCallback((newPage: number) => {
+        setPage(newPage);
+    }, []);
+
+    const handleSearchChange = useCallback((value: string) => {
+        setSearch(value);
+        // setPage(1);
+    }, []);
 
     if (error) return <div>An Error Occurred</div>;
 
@@ -72,7 +78,7 @@ function UsersPage() {
                 {/* Admin Users Section */}
                 <div className="p-6">
                     <div className="py-4">
-                        <SearchInput placeholder="Search by name or email" onChange={setSearch} />
+                        <SearchInput placeholder="Search by name or email" onChange={handleSearchChange} />
                     </div>
                     <div className="border rounded-md">
                         <Table>
@@ -116,7 +122,7 @@ function UsersPage() {
                                 ))}
                             </TableBody>
                         </Table>
-                        <PaginationComponent totalPages={data?.pagination?.pages || 1} onPageChange={setPage} />
+                        <PaginationComponent totalPages={data?.pagination?.pages || 1} onPageChange={handlePageChange} />
                     </div>
                 </div>
             </div>
