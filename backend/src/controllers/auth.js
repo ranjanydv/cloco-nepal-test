@@ -54,12 +54,6 @@ const login = async (req, res) => {
 			sameSite: 'lax',
 		});
 
-		// res.cookie('refreshToken', refreshToken, {
-		// 	httpOnly: true,
-		// 	secure: false,
-		// 	sameSite: 'lax',
-		// });
-
 		res.json({ message: 'Login successful' });
 	} catch (error) {
 		console.error(error);
@@ -97,4 +91,27 @@ const refreshToken = async (req, res) => {
 	}
 };
 
-module.exports = { register, login, refreshToken };
+const logout = async (req, res) => {
+	try {
+		// Clear cookies
+		res.clearCookie('accessToken', {
+			httpOnly: true,
+			secure: false,
+			sameSite: 'lax'
+		});
+
+		res.json({ message: 'Logged out successfully' });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ message: 'Logout failed' });
+	}
+};
+
+const getCurrentUser = async (req, res) => {
+	const userId = req.user.userId;
+	const query = 'SELECT first_name, last_name, email, role,created_at,updated_at FROM users WHERE id = $1';
+	const result = await pool.query(query, [userId]);
+	res.json(result.rows[0]);
+};
+
+module.exports = { register, login, refreshToken, logout, getCurrentUser };

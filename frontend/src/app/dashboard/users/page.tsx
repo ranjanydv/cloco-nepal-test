@@ -1,5 +1,5 @@
 'use client';
-import { IApiResponse, IUser } from '@/@types/user';
+import { IUser } from '@/@types/user';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,6 +12,7 @@ import React, { useCallback, useState } from 'react';
 import AddUserForm from './component/AddUserForm';
 
 import dynamic from 'next/dynamic';
+import { IApiResponse } from '@/@types';
 
 const SearchInput = dynamic(() => import('@/components/SearchInput'), { ssr: false });
 const PaginationComponent = dynamic(() => import('@/components/PaginationComponent'), { ssr: false });

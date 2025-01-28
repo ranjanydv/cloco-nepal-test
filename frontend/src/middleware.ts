@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Define protected routes
-const protectedRoutes = ['/dashboard'];
+// Define protected routes - expand this array as needed
+const protectedRoutes = ['/dashboard', '/profile', '/settings'];
 
 export function middleware(request: NextRequest) {
 	const accessToken = request.cookies.get('accessToken')?.value;
 
+	// Check if the path starts with any protected route
+	const isProtectedRoute = protectedRoutes.some(route =>
+		request.nextUrl.pathname.startsWith(route)
+	);
+
 	// If the user tries to access a protected route without a valid access token, redirect to login
-	if (protectedRoutes.includes(request.nextUrl.pathname) && !accessToken) {
+	if (isProtectedRoute && !accessToken) {
 		return NextResponse.redirect(new URL('/login', request.url));
 	}
 
