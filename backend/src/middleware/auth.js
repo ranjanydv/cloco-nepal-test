@@ -28,13 +28,13 @@ const authMiddleware = async (req, res, next) => {
 const authorizeRoles = (allowedRoles) => {
 	return (req, res, next) => {
 		if (!req.user || !req.user.role) {
-			return res.status(403).json({ error: 'Access forbidden' });
+			return res.status(403).json({ success: false, message: 'Access forbidden' });
 		}
 
 		const hasAllowedRole = allowedRoles.includes(req.user.role);
 
 		if (!hasAllowedRole) {
-			return res.status(403).json({ error: 'Access forbidden - Insufficient permissions' });
+			return res.status(403).json({ success: false, message: 'Access forbidden - Insufficient permissions' });
 		}
 
 		next();

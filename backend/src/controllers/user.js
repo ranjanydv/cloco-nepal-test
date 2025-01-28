@@ -99,5 +99,77 @@ const getSingleUser = async (req, res) => {
 	}
 };
 
+const updateUser = async (req, res) => {
+	const { id } = req.params;
+	const { first_name, last_name, email } = req.body;
 
-module.exports = { getUsers, getSingleUser };
+	try {
+		// Check if user exists
+		const checkUserQuery = 'SELECT id FROM users WHERE id = $1';
+		const userExists = await pool.query(checkUserQuery, [id]);
+
+		if (userExists.rows.length === 0) {
+			return res.status(404).json({ message: 'User not found' });
+		}
+
+		const query = `
+            UPDATE users 
+            SET first_name = $1, last_name = $2, email = $3, updated_at = NOW()
+            WHERE id = $4
+            RETURNING id, first_name, last_name, email
+        `;
+		const result = await pool.query(query, [first_name, last_name, email, id]);
+
+		if (result.rows.length === 0) {
+			return res.status(404).json({ message: 'User not found' });
+		}
+
+		res.json({ message: 'User updated successfully', data: result.rows[0] });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ message: 'Failed to update user' });
+	}
+};
+
+const deleteUser = async (req, res) => {
+	const { id } = req.params;
+	const { user } = req;
+
+	try {
+		// user cannot delete themselves
+		if (user.userId.toString() === id) {
+			return res.status(400).json({ message: 'Cannot delete yourself' });
+		}
+
+		// Check if user exists
+		const checkUserQuery = 'SELECT id, role FROM users WHERE id = $1';
+		const userExists = await pool.query(checkUserQuery, [id]);
+
+		if (userExists.rows.length === 0) {
+			return res.status(404).json({ message: 'User not found' });
+		}
+
+		if (userExists.rows[0].role === 'super_admin') {
+			return res.status(400).json({ message: 'Cannot delete super admin' });
+		}
+
+		const query = 'DELETE FROM users WHERE id = $1 RETURNING id';
+		const result = await pool.query(query, [id]);
+
+		if (result.rows.length === 0) {
+			return res.status(404).json({ message: 'User not found' });
+		}
+
+		res.json({ message: 'User deleted successfully' });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ message: 'Failed to delete user' });
+	}
+};
+
+module.exports = {
+	getUsers,
+	getSingleUser,
+	updateUser,
+	deleteUser
+};

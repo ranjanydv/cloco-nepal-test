@@ -6,6 +6,23 @@ const api = axios.create({
 	withCredentials: true,
 });
 
+api.interceptors.response.use(
+	(response) => response,
+	async (error) => {
+		if (error.response?.status === 401) {
+			try {
+				await api.post('/auth/logout');
+			} catch (logoutError) {
+				console.error('Logout failed:', logoutError);
+				// Redirect anyway since the session is likely invalid
+				window.location.href = '/login';
+			}
+		}
+		return Promise.reject(error);
+	}
+);
+
+
 // api.interceptors.response.use(
 // 	(response) => response,
 // 	async (error) => {

@@ -51,6 +51,7 @@ export default function Register() {
             toast.error('Passwords do not match');
             return;
         }
+        setValue('role', 'artist_manager');
         registerMutation.mutate(data);
     };
 
@@ -120,7 +121,7 @@ export default function Register() {
                         </div>
                         {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>}
                     </div>
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                         <Select onValueChange={(value) => setValue('role', value as 'artist' | 'artist_manager')}>
                             <SelectTrigger className="border-2 bg-white/50 backdrop-blur-sm px-4 py-3 focus:border-none rounded-lg focus:ring-2 focus:ring-purple-400 w-full transition-all">
                                 <SelectValue placeholder="Select your role" />
@@ -131,7 +132,7 @@ export default function Register() {
                             </SelectContent>
                         </Select>
                         {errors.role && <p className="text-red-500 text-sm">{errors.role.message}</p>}
-                    </div>
+                    </div> */}
                     <Button
                         type="submit"
                         disabled={registerMutation.isPending}
