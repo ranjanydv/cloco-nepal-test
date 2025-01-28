@@ -1,7 +1,5 @@
 'use client';
 import { IApiResponse, IUser } from '@/@types/user';
-import { PaginationComponent } from '@/components/PaginationComponent';
-import SearchInput from '@/components/SearchInput';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,6 +10,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader, PlusIcon } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import AddUserForm from './component/AddUserForm';
+
+import dynamic from 'next/dynamic';
+
+const SearchInput = dynamic(() => import('@/components/SearchInput'), { ssr: false });
+const PaginationComponent = dynamic(() => import('@/components/PaginationComponent'), { ssr: false });
 
 function UsersPage() {
     const queryClient = useQueryClient();

@@ -8,7 +8,7 @@ interface SearchInputProps {
     onChange: (value: string) => void;
 }
 
-const SearchInputContainer = ({ placeholder, onChange }: SearchInputProps) => {
+const SearchInput = ({ placeholder, onChange }: SearchInputProps) => {
     const [searchText, setSearchText] = useQueryState('search', {
         defaultValue: '',
         parse: (value) => value.trim(),
@@ -43,15 +43,4 @@ const SearchInputContainer = ({ placeholder, onChange }: SearchInputProps) => {
     );
 };
 
-export default function SearchInput(props: SearchInputProps) {
-    return (
-        <Suspense
-            fallback={
-                <div className="flex justify-end items-center px-4 py-5 w-full">
-                    <div className="bg-gray-100 rounded-md w-full h-10 animate-pulse" />
-                </div>
-            }>
-            <SearchInputContainer {...props} />
-        </Suspense>
-    );
-}
+export default SearchInput;

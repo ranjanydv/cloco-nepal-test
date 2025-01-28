@@ -17,7 +17,7 @@ interface PaginationProps {
     onPageChange: (page: number) => void;
 }
 
-function PaginationComp({ totalPages, position = 'end', onPageChange }: PaginationProps) {
+function PaginationComponent({ totalPages, position = 'end', onPageChange }: PaginationProps) {
     const [currentPage, setCurrentPage] = useQueryState('page', {
         defaultValue: '1',
         parse: (value) => value,
@@ -99,15 +99,4 @@ function PaginationComp({ totalPages, position = 'end', onPageChange }: Paginati
     );
 }
 
-export function PaginationComponent(props: PaginationProps) {
-    return (
-        <Suspense
-            fallback={
-                <div className="flex justify-end items-center px-4 py-5 w-full">
-                    <div className="bg-gray-100 rounded-md w-full h-10 animate-pulse" />
-                </div>
-            }>
-            <PaginationComp {...props} />
-        </Suspense>
-    );
-}
+export default PaginationComponent;
