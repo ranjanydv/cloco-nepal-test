@@ -94,10 +94,10 @@ function UsersPage() {
         <div className="p-8">
             <div className="flex flex-col">
                 <div className="flex justify-between items-center">
-                    <h1 className="font-bold text-2xl">Users</h1>
+                    <h1 className="font-bold text-2xl">Artists</h1>
                     <Button onClick={() => setIsCreateDialogOpen(true)}>
                         <PlusIcon className="w-4 h-4" />
-                        Add User
+                        Add Artist
                     </Button>
                     {isCreateDialogOpen && (
                         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
