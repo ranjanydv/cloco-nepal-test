@@ -1,6 +1,11 @@
 const pool = require('../db/db');
 const argon2 = require('argon2');
+const fs = require("fs");
+const path = require("path");
+const createCsvWriter = require("csv-writer").createObjectCsvWriter;
+const csvParser = require("csv-parser");
 
+const uploadsDir = path.join(__dirname, '../..', 'uploads');
 
 const getSingleArtistByUser = async (req, res) => {
 	const { id } = req.params;
@@ -468,6 +473,224 @@ const deleteArtist = async (req, res) => {
 	}
 };
 
+const exportArtist = async (req, res) => {
+	try {
+		const query = `
+      SELECT 
+        a.id AS artist_id, a.name, a.dob, a.gender, a.address, 
+        a.first_release_year, a.no_of_albums_released,
+        u.first_name, u.last_name, u.email, u.role
+      FROM artists a
+      JOIN users u ON a.user_id = u.id
+	  WHERE a.manager_id = $1
+    `;
+
+		const { rows } = await pool.query(query, [req.user.userId]);
+
+		if (rows.length === 0) {
+			return res.status(404).json({ message: "No data found" });
+		}
+
+		// Define CSV file path
+		const timestamp = Date.now();
+		const filePath = path.join(uploadsDir, `artists_${timestamp}.csv`);
+
+		// Configure csv-writer
+		const csvWriter = createCsvWriter({
+			path: filePath,
+			header: [
+				{ id: "first_name", title: "First Name" },
+				{ id: "last_name", title: "Last Name" },
+				{ id: "email", title: "Email" },
+				{ id: "dob", title: "Date of Birth" },
+				{ id: "gender", title: "Gender" },
+				{ id: "address", title: "Address" },
+				{ id: "first_release_year", title: "First Release Year" },
+				{ id: "no_of_albums_released", title: "Albums Released" },
+			],
+		});
+
+		// Write to CSV
+		await csvWriter.writeRecords(formatArtistDataForExport(rows));
+
+		// Schedule file deletion after 10 minutes
+		setTimeout(() => {
+			fs.unlink(filePath, (err) => {
+				if (err) console.error("Error deleting file:", err);
+				console.log("File deleted successfully");
+			});
+		}, 5 * 60 * 1000); // 5 minutes
+
+		// Send download link
+		res.json({
+			message: "File generated successfully",
+			downloadUrl: `/uploads/${path.basename(filePath)}`,
+		});
+	} catch (error) {
+		console.error("Error exporting data:", error);
+		res.status(500).json({ message: "Internal Server Error" });
+	}
+};
+
+const formatArtistDataForExport = (rows) => {
+	return rows.map(row => ({
+		first_name: row.first_name,
+		last_name: row.last_name,
+		email: row.email,
+		dob: row.dob ? row.dob.toISOString().split('T')[0] : '',
+		gender: row.gender,
+		address: row.address,
+		first_release_year: row.first_release_year,
+		no_of_albums_released: row.no_of_albums_released,
+	}))
+}
+
+const importArtists = async (req, res) => {
+	const filePath = path.join(uploadsDir, req.body.fileName);
+
+	if (!fs.existsSync(filePath)) {
+		return res.status(400).json({ message: "File not found" });
+	}
+
+	const artistsData = [];
+	let hasProcessedAnyRow = false;
+
+	try {
+		// Create a promise to handle the CSV parsing
+		await new Promise((resolve, reject) => {
+			fs.createReadStream(filePath)
+				.pipe(csvParser())
+				.on("data", (row) => {
+					hasProcessedAnyRow = true;
+					const processedRow = {
+						first_name: row['First Name'] || row['first_name'] || row.first_name,
+						last_name: row['Last Name'] || row['last_name'] || row.last_name,
+						email: row['Email'] || row['email'],
+						dob: row['Date of Birth'] || row['dob'],
+						gender: row['Gender'] || row['gender'],
+						address: row['Address'] || row['address'],
+						first_release_year: row['First Release Year'] || row['first_release_year'],
+						no_of_albums_released: row['Albums Released'] || row['no_of_albums_released']
+					};
+
+					// Validate and format the date
+					try {
+						// Split the date string in case it contains time information
+						const datePart = processedRow.dob.split('T')[0];
+						// Validate date format (YYYY-MM-DD)
+						if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+							throw new Error('Invalid date format');
+						}
+						processedRow.dob = datePart;
+					} catch (error) {
+						throw new Error(`Invalid date format for ${processedRow.first_name} ${processedRow.last_name}. Date should be in YYYY-MM-DD format`);
+					}
+
+					artistsData.push(processedRow);
+				})
+				.on("end", resolve)
+				.on("error", reject);
+		});
+
+		if (!hasProcessedAnyRow) {
+			throw new Error("CSV file is empty or has no valid data");
+		}
+
+		const client = await pool.connect();
+		try {
+			await client.query("BEGIN");
+
+			for (const artist of artistsData) {
+				const {
+					first_name,
+					last_name,
+					email,
+					dob,
+					gender,
+					address,
+					first_release_year,
+					no_of_albums_released,
+				} = artist;
+
+				// Validate required fields
+				if (!first_name || !last_name || !email || !dob || !gender || !address || !first_release_year || !no_of_albums_released) {
+					throw new Error(`Missing required fields for artist: ${first_name} ${last_name}`);
+				}
+
+				// Check if user already exists
+				const checkUserQuery = "SELECT id FROM users WHERE email = $1";
+				const existingUser = await client.query(checkUserQuery, [email.toLowerCase()]);
+
+				let userId;
+				if (existingUser.rows.length > 0) {
+					userId = existingUser.rows[0].id;
+				} else {
+					// Hash the password
+					const hashedPassword = await argon2.hash("artist");
+
+					// Create new user
+					const createUserQuery = `
+						INSERT INTO users (first_name, last_name, email, password, role)
+						VALUES ($1, $2, $3, $4, $5)
+						RETURNING id
+					`;
+					const userResult = await client.query(createUserQuery, [
+						first_name,
+						last_name,
+						email.toLowerCase(),
+						hashedPassword,
+						"artist",
+					]);
+
+					userId = userResult.rows[0].id;
+				}
+
+				// Create artist entry
+				const createArtistQuery = `
+					INSERT INTO artists (name, dob, gender, address, first_release_year, no_of_albums_released, user_id, manager_id)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+				`;
+
+				await client.query(createArtistQuery, [
+					`${first_name} ${last_name}`,
+					dob,
+					gender,
+					address,
+					parseInt(first_release_year),
+					parseInt(no_of_albums_released),
+					userId,
+					req.user.userId,
+				]);
+			}
+
+			await client.query("COMMIT");
+
+			// Delete file after successful import
+			fs.unlink(filePath, (err) => {
+				if (err) console.error("Error deleting file:", err);
+			});
+
+			res.status(201).json({
+				message: "Artists imported successfully",
+				count: artistsData.length
+			});
+		} catch (error) {
+			await client.query("ROLLBACK");
+			throw error;
+		} finally {
+			client.release();
+		}
+	} catch (error) {
+		console.error("Error importing artists:", error);
+		res.status(500).json({
+			message: error.message || "Failed to import artists",
+			error: error.message
+		});
+	}
+};
+
+
+
 module.exports = {
 	createArtist,
 	getArtists,
@@ -475,6 +698,8 @@ module.exports = {
 	getSingleArtist,
 	updateArtist,
 	deleteArtist,
-	getSingleArtistByUser
+	getSingleArtistByUser,
+	exportArtist,
+	importArtists
 };
 

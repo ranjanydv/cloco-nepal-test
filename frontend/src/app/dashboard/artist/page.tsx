@@ -15,17 +15,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useDebounce } from '@/hooks/useDebounce';
 import api from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader, PenIcon, PlusIcon, Trash2Icon } from 'lucide-react';
+import { DownloadIcon, Loader, PenIcon, PlusIcon, Trash2Icon, UploadIcon } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import AddArtistForm from './component/AddArtistForm';
 
 import { IApiResponse } from '@/@types';
 import { IArtist } from '@/@types/artist';
-import dynamic from 'next/dynamic';
-import { toast } from 'sonner';
+import { uploadUrl } from '@/config/apiConfig';
 import { useAuthStore } from '@/lib/store';
-import EditArtistForm from './component/EditArtistForm';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import EditArtistForm from './component/EditArtistForm';
+import ImportArtistDialog from './component/ImportArtistDialog';
 
 const SearchInput = dynamic(() => import('@/components/SearchInput'), { ssr: false });
 const PaginationComponent = dynamic(() => import('@/components/PaginationComponent'), { ssr: false });
@@ -42,6 +44,7 @@ function ArtistsPage() {
     const [selectedArtist, setSelectedArtist] = useState<IArtist | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
     const { data, isLoading, error } = useQuery<IApiResponse<IArtist>>({
         queryKey: ['artists', debouncedSearch, page],
@@ -101,16 +104,53 @@ function ArtistsPage() {
         return 'Other';
     };
 
+    const handleExport = async () => {
+        try {
+            const res = await api.get('/artist/export');
+            const downloadUrl = `${uploadUrl}${res.data.downloadUrl}`;
+
+            const fileName = res.data.downloadUrl.split('/').pop();
+            const fileResponse = await fetch(downloadUrl);
+            const blob = await fileResponse.blob();
+
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+
+            document.body.appendChild(link);
+            link.click();
+
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast.success('Artists exported successfully');
+        } catch (error) {
+            console.error('Error exporting artists:', error);
+            toast.error('Failed to export artists');
+        }
+    };
+
     return (
         <div className="p-8">
             <div className="flex flex-col">
                 <div className="flex justify-between items-center">
                     <h1 className="font-bold text-2xl">Artists</h1>
                     {useAuthStore.getState().user?.role === 'artist_manager' && (
-                        <Button onClick={() => setIsCreateDialogOpen(true)}>
-                            <PlusIcon className="w-4 h-4" />
-                            Add Artist
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="secondary" onClick={() => setIsImportDialogOpen(true)}>
+                                <UploadIcon className="w-4 h-4" />
+                                Import
+                            </Button>
+                            <Button variant="secondary" onClick={handleExport}>
+                                <DownloadIcon className="w-4 h-4" />
+                                Export
+                            </Button>
+                            <Button onClick={() => setIsCreateDialogOpen(true)}>
+                                <PlusIcon className="w-4 h-4" />
+                                Add Artist
+                            </Button>
+                        </div>
                     )}
                     {isCreateDialogOpen && (
                         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -248,6 +288,8 @@ function ArtistsPage() {
                     </AlertDialog>
                 </>
             )}
+
+            <ImportArtistDialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen} />
         </div>
     );
 }

@@ -293,8 +293,6 @@ const deleteMusic = async (req, res) => {
 	}
 }
 
-
-
 module.exports = {
 	createMusic,
 	getMusic,
