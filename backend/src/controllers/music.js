@@ -2,23 +2,34 @@ const pool = require('../db/db');
 
 // utility functions
 const musicBelongsToArtist = async (musicArtistId, requestArtistId) => {
-	if (musicArtistId === requestArtistId) {
-		return true;
-	}
-	return false;
-}
+	const query = `SELECT * FROM artists WHERE id = $1`;
+	const result = await pool.query(query, [musicArtistId]);
+
+	if (result.rows.length === 0) return false;
+
+	return result.rows[0].user_id === requestArtistId;
+};
+
 
 const musicExists = async (id) => {
 	const query = `SELECT * FROM music WHERE id = $1`;
 	const result = await pool.query(query, [id]);
-	return result.rows.length > 0;
+
+	return result.rows.length > 0 ? result.rows[0] : null;
 }
+
+const artistExistsFunc = async (userId) => {
+	const query = `SELECT id FROM artists WHERE user_id = $1`;
+	const result = await pool.query(query, [userId]);
+
+	return result.rows.length > 0 ? result.rows[0] : null;
+};
+
 
 
 const createMusic = async (req, res) => {
 	const { title, album_name, genre } = req.body;
 
-	// Input validation
 	if (!title || !album_name || !genre) {
 		return res.status(400).json({ message: 'All fields are required' });
 	}
@@ -26,13 +37,18 @@ const createMusic = async (req, res) => {
 	const client = await pool.connect();
 
 	try {
+		const artistExists = await artistExistsFunc(req.user.userId);
+		if (!artistExists) {
+			return res.status(404).json({ message: 'Artist not found' });
+		}
+
 		const createMusicQuery = `
             INSERT INTO music (artist_id, title, album_name, genre)
             VALUES ($1, $2, $3, $4)
             RETURNING *
         `;
 		const musicResult = await client.query(createMusicQuery, [
-			req.user.userId,
+			artistExists.id,
 			title,
 			album_name,
 			genre
@@ -208,6 +224,7 @@ const deleteMusic = async (req, res) => {
 
 	try {
 		const existingMusic = await musicExists(id);
+
 		if (!existingMusic) {
 			return res.status(404).json({ message: 'Music not found' });
 		}
@@ -217,9 +234,9 @@ const deleteMusic = async (req, res) => {
 			return res.status(403).json({ message: 'You are not authorized to delete this music' });
 		}
 
-		const deleteMusicQuery = `DELETE FROM music WHERE id = $1`;
-		await client.query(deleteMusicQuery, [id]);
-		res.json({ message: 'Music deleted successfully' });
+		const deleteMusicQuery = `DELETE FROM music WHERE id = $1 RETURNING *`;
+		const musicResult = await client.query(deleteMusicQuery, [id]);
+		res.json({ message: 'Music deleted successfully', data: musicResult.rows[0] });
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ message: 'Failed to delete music' });
@@ -236,6 +253,5 @@ module.exports = {
 	getMusicByArtist,
 	updateMusic,
 	deleteMusic
-
 };
 
