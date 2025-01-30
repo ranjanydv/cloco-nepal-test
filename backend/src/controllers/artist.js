@@ -16,7 +16,7 @@ const createArtist = async (req, res) => {
 	} = req.body;
 
 	// Input validation
-	if (!first_name || !last_name || !email || !dob || !gender || !address || !first_release_year || !no_of_albums_released || !manager_id) {
+	if (!first_name || !last_name || !email || !dob || !gender || !address || !first_release_year || !no_of_albums_released) {
 		return res.status(400).json({ message: 'All fields are required' });
 	}
 
@@ -68,7 +68,7 @@ const createArtist = async (req, res) => {
 			first_release_year,
 			no_of_albums_released,
 			userId,
-			manager_id
+			req.user.userId
 		]);
 
 		await client.query('COMMIT');
@@ -173,6 +173,96 @@ const getArtists = async (req, res) => {
 	}
 };
 
+const getArtistsByManager = async (req, res) => {
+	const { page = 1, size = 10, search = '' } = req.query;
+	const offset = (page - 1) * size;
+	const managerId = req.user.userId;
+
+	try {
+		let countQuery, query, queryParams, countQueryParams;
+
+		if (search) {
+			const searchTerm = `%${search}%`;
+			countQuery = `
+                SELECT COUNT(*) 
+                FROM artists 
+                WHERE name ILIKE $1 AND manager_id = $2
+            `;
+			query = `
+                SELECT 
+                    a.*,
+                    ua.id AS user_id,
+                    ua.first_name AS user_first_name,
+                    ua.last_name AS user_last_name,
+                    ua.email AS user_email,
+                    um.id AS manager_id,
+                    um.first_name AS manager_first_name,
+                    um.last_name AS manager_last_name,
+                    um.email AS manager_email
+                FROM artists a
+                INNER JOIN users ua ON a.user_id = ua.id
+                INNER JOIN users um ON a.manager_id = um.id
+                WHERE a.name ILIKE $1 AND a.manager_id = $2
+                ORDER BY a.created_at DESC
+                LIMIT $3 OFFSET $4
+            `;
+			queryParams = [searchTerm, managerId, size, offset];
+			countQueryParams = [searchTerm, managerId];
+		} else {
+			countQuery = 'SELECT COUNT(*) FROM artists WHERE manager_id = $1';
+			query = `
+                SELECT 
+                    a.*,
+                    ua.id AS user_id,
+                    ua.first_name AS user_first_name,
+                    ua.last_name AS user_last_name,
+                    ua.email AS user_email,
+                    um.id AS manager_id,
+                    um.first_name AS manager_first_name,
+                    um.last_name AS manager_last_name,
+                    um.email AS manager_email
+                FROM artists a
+                INNER JOIN users ua ON a.user_id = ua.id
+                INNER JOIN users um ON a.manager_id = um.id
+                WHERE a.manager_id = $1
+                ORDER BY a.created_at DESC
+                LIMIT $2 OFFSET $3
+            `;
+			queryParams = [managerId, size, offset];
+			countQueryParams = [managerId];
+		}
+
+		// Get total count for pagination
+		const totalCount = await pool.query(countQuery, countQueryParams);
+		const total = totalCount.rows.length ? parseInt(totalCount.rows[0].count) : 0;
+
+		// Get paginated results
+		const result = await pool.query(query, queryParams);
+
+		// Format the response
+		const formattedData = formatArtistData(result.rows);
+
+		// Add pagination metadata
+		const pagination = {
+			total,
+			page: parseInt(page),
+			size: parseInt(size),
+			pages: total ? Math.ceil(total / size) : 0
+		};
+
+		return res.status(200).json({
+			message: 'Artists fetched successfully',
+			data: formattedData,
+			pagination
+		});
+
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ message: 'Failed to fetch artists' });
+	}
+};
+
+
 // Reusable function to format artist data
 const formatArtistData = (rows) => {
 	return rows.map(row => ({
@@ -250,7 +340,6 @@ const updateArtist = async (req, res) => {
 		address,
 		first_release_year,
 		no_of_albums_released,
-		manager_id
 	} = req.body;
 
 	const client = await pool.connect();
@@ -306,7 +395,6 @@ const updateArtist = async (req, res) => {
                 address = $4,
                 first_release_year = $5,
                 no_of_albums_released = $6,
-                manager_id = $7,
                 updated_at = NOW()
             WHERE id = $8
             RETURNING *
@@ -318,7 +406,6 @@ const updateArtist = async (req, res) => {
 			address,
 			first_release_year,
 			no_of_albums_released,
-			manager_id,
 			id
 		]);
 
@@ -378,6 +465,7 @@ const deleteArtist = async (req, res) => {
 module.exports = {
 	createArtist,
 	getArtists,
+	getArtistsByManager,
 	getSingleArtist,
 	updateArtist,
 	deleteArtist

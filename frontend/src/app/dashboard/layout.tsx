@@ -12,6 +12,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import React from 'react';
+import { useAuthStore } from '@/lib/store';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -33,6 +34,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         queryKey: ['currentUser'],
         queryFn: async () => {
             const response = await api.get('/auth/me');
+            useAuthStore.setState({ user: response.data });
             return response.data;
         },
     });
@@ -44,6 +46,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     const handleLogout = async () => {
         try {
             await api.post('/auth/logout');
+            useAuthStore.setState({ user: null });
             router.push('/login');
             router.refresh();
         } catch (error) {

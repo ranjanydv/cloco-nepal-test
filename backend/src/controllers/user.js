@@ -167,9 +167,16 @@ const deleteUser = async (req, res) => {
 	}
 };
 
+const getAllManagers = async (req, res) => {
+	const query = 'SELECT id, first_name, last_name, email FROM users WHERE role = $1';
+	const result = await pool.query(query, ['artist_manager']);
+	res.json({ message: 'Managers fetched successfully', data: result.rows });
+};
+
 module.exports = {
 	getUsers,
 	getSingleUser,
 	updateUser,
-	deleteUser
+	deleteUser,
+	getAllManagers
 };

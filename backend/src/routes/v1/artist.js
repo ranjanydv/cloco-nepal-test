@@ -5,11 +5,12 @@ const { authMiddleware, authorizeRoles } = require('../../middleware/auth');
 
 
 router.get('/', authMiddleware, artistController.getArtists);
-router.post('/', authMiddleware, artistController.createArtist);
+router.get('/manager', authMiddleware, artistController.getArtistsByManager);
+router.post('/', authMiddleware, authorizeRoles(['artist_manager']), artistController.createArtist);
 router.get('/:id', authMiddleware, artistController.getSingleArtist);
 
-// router.patch('/:id', authMiddleware, artistController.updateArtist);
-// router.delete('/:id', authMiddleware, authorizeRoles(['super_admin']), artistController.deleteArtist);
+router.patch('/:id', authMiddleware, authorizeRoles(['artist_manager']), artistController.updateArtist);
+router.delete('/:id', authMiddleware, authorizeRoles(['artist_manager']), artistController.deleteArtist);
 
 
 module.exports = router;

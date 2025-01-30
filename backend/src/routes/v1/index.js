@@ -15,5 +15,5 @@ router.get("/", (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/user', userRoutes);
-router.use('/artists', artistRoutes);
+router.use('/artist', artistRoutes);
 module.exports = router;
