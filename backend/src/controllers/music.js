@@ -155,16 +155,64 @@ const getMusic = async (req, res) => {
 
 const getMusicByArtist = async (req, res) => {
 	const { id } = req.params;
+	const page = parseInt(req.query.page) || 1;
+	const size = parseInt(req.query.size) || 10;
+	const offset = (page - 1) * size;
 
 	try {
-		const query = `SELECT * FROM music WHERE artist_id = $1`;
-		const result = await pool.query(query, [id]);
-		res.json({ message: 'Music fetched successfully', data: result.rows });
+		// Get total count for pagination
+		const countQuery = 'SELECT COUNT(*) FROM music WHERE artist_id = $1';
+		const totalCountResult = await pool.query(countQuery, [id]);
+		const totalCount = parseInt(totalCountResult.rows[0].count);
+
+		// Fetch paginated music details with artist and user info
+		const query = `
+            SELECT 
+                m.*,
+                a.id AS artist_id,
+                a.name AS artist_name,
+                ua.id AS user_id,
+                ua.first_name AS user_first_name,
+                ua.last_name AS user_last_name,
+                ua.email AS user_email,
+                um.id AS manager_id,
+                um.first_name AS manager_first_name,
+                um.last_name AS manager_last_name,
+                um.email AS manager_email
+            FROM music m
+            INNER JOIN artists a ON m.artist_id = a.id
+            INNER JOIN users ua ON a.user_id = ua.id
+            INNER JOIN users um ON a.manager_id = um.id
+            WHERE m.artist_id = $1
+            ORDER BY m.created_at DESC
+            LIMIT $2 OFFSET $3
+        `;
+		const queryParams = [id, size, offset];
+		const result = await pool.query(query, queryParams);
+
+		// Format the response
+		const formattedData = formatMusicData(result.rows);
+
+		// Pagination metadata
+		const pagination = {
+			total: totalCount,
+			page,
+			size,
+			pages: Math.ceil(totalCount / size),
+		};
+
+		return res.status(200).json({
+			message: 'Music fetched successfully',
+			data: formattedData,
+			pagination,
+		});
+
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ message: 'Failed to fetch music' });
+		console.error('Error fetching music:', error);
+		return res.status(500).json({ message: 'Failed to fetch music', error: error.message });
 	}
-}
+};
+
 
 // Reusable function to format artist data
 const formatMusicData = (rows) => {

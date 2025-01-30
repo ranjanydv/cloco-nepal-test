@@ -12,6 +12,9 @@ import { format } from 'date-fns';
 import { IArtist } from '@/@types/artist';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { IMusic } from '@/@types/music';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { IApiResponse } from '@/@types';
 
 export default function ArtistPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -21,6 +24,20 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
         queryFn: async () => {
             const response = await api.get(`/artist/${id}`);
             return response.data.data;
+        },
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const { data: artistMusic, isLoading: artistMusicLoading } = useQuery<IApiResponse<IMusic>>({
+        queryKey: ['artist-music', id],
+        queryFn: async () => {
+            const response = await api.get(`/music/byArtist/${id}`, {
+                params: {
+                    page: 1,
+                    size: 100,
+                },
+            });
+            return response.data;
         },
         staleTime: 1000 * 60 * 5,
     });
@@ -40,25 +57,25 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
     return (
         <div className="space-y-6 mx-auto p-6 container">
             {/* Header Section */}
-            <div className="flex items-center space-x-4">
-                <div className="">
-                    <Button variant="outline" onClick={() => router.back()}>
-                        <ChevronLeft size={16} /> Back
-                    </Button>
-                </div>
-                <Avatar className="w-20 h-20">
-                    <AvatarFallback className="text-2xl">
-                        {artist?.name
-                            .split(' ')
-                            .map((n: string) => n[0])
-                            .join('')}
-                    </AvatarFallback>
-                </Avatar>
-                <div>
-                    <h1 className="font-bold text-3xl">{artist?.name}</h1>
-                    <Badge variant="secondary" className="mt-2">
-                        {artist?.gender === 'm' ? 'Male' : artist?.gender === 'f' ? 'Female' : 'Other'}
-                    </Badge>
+            <div className="space-y-2">
+                <Button variant="outline" onClick={() => router.back()}>
+                    <ChevronLeft size={16} /> Back
+                </Button>
+                <div className="flex items-center space-x-4">
+                    <Avatar className="w-20 h-20">
+                        <AvatarFallback className="text-2xl">
+                            {artist?.name
+                                .split(' ')
+                                .map((n: string) => n[0])
+                                .join('')}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <h1 className="font-bold text-3xl">{artist?.name}</h1>
+                        <Badge variant="secondary" className="mt-2">
+                            {artist?.gender === 'm' ? 'Male' : artist?.gender === 'f' ? 'Female' : 'Other'}
+                        </Badge>
+                    </div>
                 </div>
             </div>
 
@@ -114,6 +131,42 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
                             <CalendarIcon className="w-4 h-4 text-muted-foreground" />
                             <span>Joined: {format(new Date(artist.created_at), 'MMMM dd, yyyy')}</span>
                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Music Section */}
+            <div>
+                <Card className="px-2 py-6">
+                    <CardContent>
+                        {artistMusicLoading ? (
+                            <p>Loading...</p>
+                        ) : (
+                            <>
+                                <h2 className="mb-2 font-semibold text-2xl">
+                                    Music by {artist?.name}
+                                    <small className="ml-2 text-muted-foreground">({artistMusic?.pagination?.total} songs)</small>
+                                </h2>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Title</TableHead>
+                                            <TableHead>Genre</TableHead>
+                                            <TableHead>Album</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {artistMusic?.data.map((music) => (
+                                            <TableRow key={music.id}>
+                                                <TableCell>{music.title}</TableCell>
+                                                <TableCell>{music.genre}</TableCell>
+                                                <TableCell>{music.album_name}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
             </div>

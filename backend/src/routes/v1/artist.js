@@ -8,6 +8,7 @@ router.get('/', authMiddleware, artistController.getArtists);
 router.get('/manager', authMiddleware, artistController.getArtistsByManager);
 router.post('/', authMiddleware, authorizeRoles(['artist_manager']), artistController.createArtist);
 router.get('/:id', authMiddleware, artistController.getSingleArtist);
+router.get('/byUser/:id', authMiddleware, artistController.getSingleArtistByUser);
 
 router.patch('/:id', authMiddleware, authorizeRoles(['artist_manager']), artistController.updateArtist);
 router.delete('/:id', authMiddleware, authorizeRoles(['artist_manager']), artistController.deleteArtist);

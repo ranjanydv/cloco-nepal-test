@@ -109,7 +109,7 @@ const logout = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
 	const userId = req.user.userId;
-	const query = 'SELECT first_name, last_name, email, role,created_at,updated_at FROM users WHERE id = $1';
+	const query = 'SELECT id, first_name, last_name, email, role,created_at,updated_at FROM users WHERE id = $1';
 	const result = await pool.query(query, [userId]);
 	res.json(result.rows[0]);
 };

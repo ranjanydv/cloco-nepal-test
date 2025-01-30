@@ -2,6 +2,12 @@ const pool = require('../db/db');
 const argon2 = require('argon2');
 
 
+const getSingleArtistByUser = async (req, res) => {
+	const { id } = req.params;
+	const artist = await pool.query('SELECT * FROM artists WHERE user_id = $1', [id]);
+	res.json({ message: 'Artist fetched successfully', data: artist.rows[0] });
+};
+
 const createArtist = async (req, res) => {
 	const {
 		first_name,
@@ -468,6 +474,7 @@ module.exports = {
 	getArtistsByManager,
 	getSingleArtist,
 	updateArtist,
-	deleteArtist
+	deleteArtist,
+	getSingleArtistByUser
 };
 

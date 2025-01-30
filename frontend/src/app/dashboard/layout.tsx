@@ -35,6 +35,11 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         queryFn: async () => {
             const response = await api.get('/auth/me');
             useAuthStore.setState({ user: response.data });
+            if (response.data.role === 'artist') {
+                const artistResponse = await api.get(`/artist/byUser/${response.data.id}`);
+                useAuthStore.setState({ artist: artistResponse.data.data });
+            }
+
             return response.data;
         },
     });
@@ -47,6 +52,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         try {
             await api.post('/auth/logout');
             useAuthStore.setState({ user: null });
+            useAuthStore.setState({ artist: null });
             router.push('/login');
             router.refresh();
         } catch (error) {
@@ -104,7 +110,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                             </DropdownMenu>
                         </div>
                     </header>
-                    {children}
+                    <section className="p-4">{children}</section>
                 </main>
             </SidebarProvider>
         </main>
